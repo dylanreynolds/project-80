@@ -45,11 +45,19 @@ storage = MemoryStorage()
 conversation_state = ConversationState(storage)
 user_state = UserState(storage)
 
-snow_client = ServiceNowClient(
-    instance=BotConfig.SERVICENOW_INSTANCE,
-    username=BotConfig.SERVICENOW_USERNAME,
-    password=BotConfig.SERVICENOW_PASSWORD,
-)
+if BotConfig.USE_GILLIGAN_BOT:
+    from integrations.gilligan_snow_adapter import GilliganBotServiceNowAdapter
+    snow_client = GilliganBotServiceNowAdapter(
+        base_url=BotConfig.GILLIGAN_URL,
+        extras_file=BotConfig.EXTRAS_FILE,
+    )
+    logger.info("Teams bot using Gilligan's Island ServiceNow adapter (%s)", BotConfig.GILLIGAN_URL)
+else:
+    snow_client = ServiceNowClient(
+        instance=BotConfig.SERVICENOW_INSTANCE,
+        username=BotConfig.SERVICENOW_USERNAME,
+        password=BotConfig.SERVICENOW_PASSWORD,
+    )
 
 bot = ITHelpdeskBot(conversation_state, user_state, snow_client)
 

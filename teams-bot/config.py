@@ -22,3 +22,11 @@ class BotConfig:
 
     # Azure Bot conversation reference store (Cosmos DB or in-memory for dev)
     STORAGE_CONNECTION_STRING: str = os.environ.get("STORAGE_CONNECTION_STRING", "")
+
+    # ------------------------------------------------------------------
+    # Gilligan's Island demo mode
+    # ------------------------------------------------------------------
+    USE_GILLIGAN_BOT: bool = os.environ.get("USE_GILLIGAN_BOT", "").lower() in ("1", "true", "yes")
+    GILLIGAN_URL: str = os.environ.get("GILLIGAN_URL", "http://192.168.56.1:3000")
+    # File path where the bot writes ticket extras so demo/approve.py can read them
+    EXTRAS_FILE: str = os.environ.get("EXTRAS_FILE", "/tmp/gilligan_ticket_extras.json")

@@ -7,11 +7,12 @@ Creates software request tickets in the Gilligan's Island mock server
 TicketResult shape that the bot dialogs expect.
 
 Extra fields (software_name, justification, device_id, teams_conversation_ref)
-are stored locally so the orchestrator can retrieve them via the
-GilliganServiceNowAdapter.register_extras() call made from the
-/webhook/servicenow payload injected by demo/approve.py.
+are written to EXTRAS_FILE so that demo/approve.py can include them in the
+orchestrator webhook payload when the presenter approves during the demo.
 """
+import json
 import logging
+import os
 from typing import Optional
 
 import requests
@@ -24,11 +25,18 @@ logger = logging.getLogger(__name__)
 class GilliganBotServiceNowAdapter:
     """Implements the same interface as the bot's ServiceNowClient."""
 
-    def __init__(self, base_url: str):
-        # e.g. "http://192.168.56.1:3000"
+    def __init__(
+        self,
+        base_url: str,
+        extras_file: str = "/tmp/gilligan_ticket_extras.json",
+    ):
         self._base = base_url.rstrip("/")
-        # ticket_number → full extras dict (needed by demo/approve.py)
-        self._extras: dict[str, dict] = {}
+        self._extras_file = extras_file
+        self._extras: dict[str, dict] = self._load_extras()
+
+    # ------------------------------------------------------------------
+    # ServiceNowClient interface
+    # ------------------------------------------------------------------
 
     def create_software_request(
         self,
@@ -41,14 +49,10 @@ class GilliganBotServiceNowAdapter:
     ) -> TicketResult:
         """
         Creates a ticket in Gilligan's Island and returns a TicketResult.
-
-        Gilligan's Island expects an offboarding-style payload; we repurpose the
-        'reason' field to carry the software request description so the ticket
-        shows meaningful text in the dashboard.
+        Repurposes the 'reason' field so the ticket shows meaningful text
+        in the Gilligan's Island dashboard.
         """
         payload = {
-            # Use the first mock user as a placeholder employee — the real
-            # requester identity is in the extras dict below.
             "employeeId": "usr-demo",
             "reason": f"Software Request: {software_name} — {justification[:120]}",
             "requestedBy": requester_name or requester_email,
@@ -68,8 +72,8 @@ class GilliganBotServiceNowAdapter:
 
         ticket_number = raw.get("number", raw.get("id", "RITM-UNKNOWN"))
 
-        # Persist extras locally so demo/approve.py can include them in the
-        # orchestrator webhook payload.
+        # Persist extras to disk so demo/approve.py (running in a separate
+        # process or terminal) can read them without any shared state.
         self._extras[ticket_number] = {
             "software_name": software_name,
             "requester_email": requester_email,
@@ -77,32 +81,40 @@ class GilliganBotServiceNowAdapter:
             "teams_conversation_ref": teams_conversation_ref or "",
             "justification": justification,
         }
+        self._save_extras()
 
         logger.info(
-            "Gilligan's Island ticket %s created for %s (%s)",
+            "Gilligan's Island ticket %s created for '%s' (%s)",
             ticket_number,
             software_name,
             requester_email,
         )
 
         return TicketResult(
-            sys_id=ticket_number,    # Gilligan's Island uses number as its ID
+            sys_id=ticket_number,
             number=ticket_number,
             state="new",
             approval="requested",
         )
 
-    def get_extras(self, ticket_number: str) -> dict:
-        """Returns the extras dict for a ticket (used by demo helpers)."""
-        return self._extras.get(ticket_number, {})
+    # ------------------------------------------------------------------
+    # Extras persistence — shared with demo/approve.py via a JSON file
+    # ------------------------------------------------------------------
 
-    def list_tickets(self) -> list[dict]:
-        """Returns all open tickets from Gilligan's Island — useful for demo CLI."""
+    def _load_extras(self) -> dict:
         try:
-            r = requests.get(f"{self._base}/api/snow/tickets", timeout=10)
-            r.raise_for_status()
-            data = r.json()
-            return data if isinstance(data, list) else data.get("tickets", [])
+            with open(self._extras_file) as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
         except Exception as exc:
-            logger.warning("Could not list Gilligan's Island tickets: %s", exc)
-            return []
+            logger.warning("Could not load extras file %s: %s", self._extras_file, exc)
+            return {}
+
+    def _save_extras(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(self._extras_file)), exist_ok=True)
+            with open(self._extras_file, "w") as f:
+                json.dump(self._extras, f, indent=2)
+        except Exception as exc:
+            logger.warning("Could not save extras file %s: %s", self._extras_file, exc)
