@@ -1,0 +1,10 @@
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+pydantic==2.7.4
+requests==2.32.3
+azure-servicebus==7.12.1
+azure-identity==1.17.1
+azure-keyvault-secrets==4.8.0   # Signing secret retrieval via Managed Identity
+python-dotenv==1.0.1
+# KB Advisory
+openai==1.35.7          # Azure OpenAI SDK (alternative to raw requests)

@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment / secrets — never commit these
+.env
+.env.*
+!.env.example
+!gilligan/.env.gilligan
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.suo
+
+# Node (Gilligan's Island lives in its own repo — not included here)
+node_modules/
+
+# Temp / demo state
+/tmp/
+gilligan_ticket_extras.json
+
+# Windows agent persisted state
+device_id.txt

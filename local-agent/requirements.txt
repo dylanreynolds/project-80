@@ -1,0 +1,6 @@
+azure-servicebus==7.12.1
+azure-identity==1.17.1
+requests==2.32.3
+pywin32==306          # Windows registry + service support
+python-dotenv==1.0.1
+keyring==25.2.1       # DPAPI-backed Windows Credential Manager for signing secret storage
